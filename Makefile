@@ -148,6 +148,7 @@ UPROGS=\
 	$U/_zombie\
 	$U/_uptime\
 	$U/_time1\
+	$U/_time\
 	$U/_matmul\
 	$U/_sleep\
 	$U/_logstress\
