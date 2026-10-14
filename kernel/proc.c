@@ -443,8 +443,7 @@ kwait2(uint64 addr, uint64 rusage_addr)
           pid = pp->pid;
           ru.cputime = pp->cputime;
 
-          if(addr != 0 &&
-             copyout(p->pagetable, p->sz, addr, (char *)&pp->xstate,
+          if(addr != 0 && copyout(p->pagetable, p->sz, addr, (char *)&pp->xstate,
                      sizeof(pp->xstate)) < 0){
             release(&pp->lock);
             release(&wait_lock);
@@ -763,4 +762,35 @@ procdump(void)
     printk("%d %s %s", p->pid, state, p->name);
     printk("\n");
   }
+}
+
+// Return the number of active processes and copy their pstat records to dst
+int
+getprocs(uint64 dst)
+{
+  struct proc *p;
+  struct pstat st;
+  int count = 0;
+
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state != UNUSED) {
+      st.pid = p->pid;
+      st.state = p->state;
+      st.size = p->sz;
+      st.ppid = p->parent ? p->parent->pid : 0;
+      safestrcpy(st.name, p->name, sizeof(st.name));
+
+      release(&p->lock);
+
+      if(copyout(myproc()->pagetable, myproc()->sz,dst + count * sizeof(struct pstat), (char *)&st, sizeof(struct pstat)) < 0)
+        return -1;
+
+      count++;
+    } else {
+      release(&p->lock);
+    }
+  }
+
+  return count;
 }

@@ -118,3 +118,10 @@ sys_wait2(void)
   argaddr(1, &r);
   return kwait2(p, r);
 }
+uint64
+sys_getprocs(void)
+{
+  uint64 pstat_addr;
+  argaddr(0, &pstat_addr);
+  return getprocs(pstat_addr);
+}
