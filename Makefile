@@ -159,6 +159,8 @@ UPROGS=\
 	$U/_testpriority\
 	$U/_testage\
 	$U/_testtie\
+	$U/_pexec\
+	$U/_testbench\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

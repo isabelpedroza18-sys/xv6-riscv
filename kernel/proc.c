@@ -520,52 +520,93 @@ scheduler(void)
     int found = 0;
     
     
-   #if SCHEDULER == PRIORITY
+   #if SCHEDULER == AGING
     struct proc *highest_p = 0;
-    int max_priority = -1;
+    int max_score = -1;
 
-    // Pass 1: Find the runnable process with the highest priority
+    // First Pass: Scan the entire process table to find the best candidate
+    for (p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock); // Acquire process lock before inspecting state
+      if (p->state == RUNNABLE) {
+        // Calculate effective priority: base priority + wait time in ready queue
+        int age = ticks - p->readytime;
+        int score = p->priority + age;
+
+        // If this process has a strictly higher score, select it
+        if (highest_p == 0 || score > max_score) {
+          if (highest_p != 0) {
+            release(&highest_p->lock); // Release previous best candidate
+          }
+          highest_p = p;       // Update candidate pointer
+          max_score = score;   // Update highest score seen
+          continue;            // Keep highest_p locked; do not release below
+        }
+      }
+      release(&p->lock); // Not selected; release lock
+    }
+
+    // Second Pass: Switch context and execute the selected process
+    if (highest_p != 0) {
+      highest_p->state = RUNNING;               // Mark process as running
+      c->proc = highest_p;                      // Set current CPU running process
+      swtch(&c->context, &highest_p->context);  // Context switch to process
+
+      // Return point after process yields or exits
+      mycpu()->intena = 0;                      // Preserve interrupt state on release
+      c->proc = 0;                              // Clear current running process pointer
+      found = 1;                                // Acknowledge a runnable process executed
+      release(&highest_p->lock);                // Release process lock
+    }
+
+#elif SCHEDULER == PRIORITY
+    // ==========================================
+    // Policy 2: Strict Priority (No Aging)
+    // ==========================================
+    struct proc *highest_p = 0; // Best candidate pointer
+    int max_priority = -1;      // Highest priority found
+
+    // First Pass: Scan process table for highest base priority
     for (p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       if (p->state == RUNNABLE) {
+        // Strictly compare base priority; ties arbitrarily keep earlier entry
         if (highest_p == 0 || p->priority > max_priority) {
           if (highest_p != 0) {
             release(&highest_p->lock);
           }
           highest_p = p;
           max_priority = p->priority;
-          continue; // Keep highest_p locked
+          continue; // Keep lock held
         }
       }
       release(&p->lock);
     }
 
-    // Pass 2: Context switch to highest priority candidate if found
+    // Second Pass: Execute highest priority process
     if (highest_p != 0) {
       highest_p->state = RUNNING;
       c->proc = highest_p;
       swtch(&c->context, &highest_p->context);
 
-      // Don't re-enable interrupts on release.
       mycpu()->intena = 0;
-
-      // Process is done running for now.
       c->proc = 0;
       found = 1;
       release(&highest_p->lock);
     }
+
 #else
-    // Default Round-Robin logic
+    // ==========================================
+    // Policy 3: Default xv6 Round-Robin
+    // ==========================================
     for (p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       if (p->state == RUNNABLE) {
+        // Run first runnable process encountered in table order
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
 
-        // Don't re-enable interrupts on release.
         mycpu()->intena = 0;
-
         c->proc = 0;
         found = 1;
       }
@@ -573,8 +614,8 @@ scheduler(void)
     }
 #endif
 
+    // If no process was ready to run, put CPU to sleep until next interrupt
     if (found == 0) {
-      // nothing to run; stop running on this core until an interrupt.
       asm volatile("wfi");
     }
   }

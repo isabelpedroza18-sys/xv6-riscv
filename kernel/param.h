@@ -14,4 +14,5 @@
 #define USERSTACK   1                 // user stack pages
 #define RR       0
 #define PRIORITY 1
-#define SCHEDULER PRIORITY
+#define AGING 2
+#define SCHEDULER AGING
