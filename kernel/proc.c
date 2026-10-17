@@ -7,6 +7,8 @@
 #include "defs.h"
 #include "pstat.h"
 
+extern uint ticks;
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -126,6 +128,9 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->cputime = 0;
+  p->priority = 0;
+  p->readytime = 0;
+
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0) {
     freeproc(p);
@@ -227,6 +232,9 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  
+  //start readytime 
+  p->readytime= ticks; 
 
   release(&p->lock);
 }
@@ -299,7 +307,12 @@ kfork(void)
   release(&wait_lock);
 
   acquire(&np->lock);
+  //inherit priority from parent
+  np->priority = p->priority;
+
   np->state = RUNNABLE;
+ //set readytime
+  np->readytime = ticks;
   release(&np->lock);
 
   return pid;
@@ -567,6 +580,7 @@ yield(void)
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
+  p->readytime = ticks;
   sched();
   release(&p->lock);
 }
@@ -653,6 +667,7 @@ wakeup(void *chan)
       // go to sleep, also set it back to RUNNING.
       if (p->state == SLEEPING) {
         p->state = RUNNABLE;
+	p->readytime = ticks;
       }
     }
     release(&p->lock);
@@ -674,6 +689,7 @@ kkill(int pid)
       if (p->state == SLEEPING) {
         // Wake process from sleep().
         p->state = RUNNABLE;
+	p->readytime = ticks;
       }
       release(&p->lock);
       return 0;
@@ -780,6 +796,8 @@ getprocs(uint64 dst)
       st.size = p->sz;
       st.ppid = p->parent ? p->parent->pid : 0;
       safestrcpy(st.name, p->name, sizeof(st.name));
+      st.priority = p->priority;
+      st.readytime = p->readytime;
 
       release(&p->lock);
 

@@ -17,15 +17,23 @@ main(int argc, char **argv)
     [ZOMBIE]    "zombie  "
   };
 
+  int current_time = uptime();
+ 
   nprocs = getprocs(uproc);
   if (nprocs < 0)
     exit(-1);
 
-  printf("pid\tstate\t\tsize\tppid\tname\n");
+  printf("pid\tstate\t\tsize\tppid\tname\tpriority\tage\n");
   for (i=0; i<nprocs; i++) {
     state = states[uproc[i].state];
-    printf("%d\t%s\t%d\t%d\t%s\n", uproc[i].pid, state,
-                   (int)uproc[i].size, uproc[i].ppid, uproc[i].name);
+
+    int age = 0;
+    if (uproc[i].state == RUNNABLE){
+	    age = current_time - uproc[i].readytime;
+    }
+    
+    printf("%d\t%s\t%d\t%d\t%s\t%d\t\t%d\n", uproc[i].pid, state,
+               (int)uproc[i].size, uproc[i].ppid, uproc[i].name, uproc[i].priority, age);
   }
 
   exit(0);

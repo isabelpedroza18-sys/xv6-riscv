@@ -13,6 +13,8 @@ struct pstat {
     uint64 size;     // Size of process memory (bytes)
     int ppid;        // Parent process ID
     char name[16];   // Parent command name
+    int priority;    // Process priority
+    int readytime;   // Ticks spent in RUNNABLE state
 };
 struct rusage {
   uint cputime;

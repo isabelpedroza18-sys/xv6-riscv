@@ -102,5 +102,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  uint cputime;			//Process CPU time in ticks
+  uint cputime;		       //Process CPU time in ticks
+  int priority;		       // Process priority (0 to 49)
+  int readytime;		//Ticks spent in RUNNABLE state
 };
