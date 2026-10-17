@@ -125,3 +125,22 @@ sys_getprocs(void)
   argaddr(0, &pstat_addr);
   return getprocs(pstat_addr);
 }
+uint64
+sys_getpriority(void)
+{
+  return myproc()->priority;
+}
+
+uint64
+sys_setpriority(void)
+{
+  int priority;
+  argint(0, &priority);
+
+  if(priority < 0 || priority > 49)
+    return -1;
+
+  myproc()->priority = priority;
+  return 0;
+}
+
